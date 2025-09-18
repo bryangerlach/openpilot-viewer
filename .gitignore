@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.sqlite3
+
+# Django
+*.log
+*.pot
+*.py[cod]
+*.so
+*.egg
+*.egg-info
+*.db
+*.DS_Store
+
+# Docker
+*.env
+docker-compose.override.yml

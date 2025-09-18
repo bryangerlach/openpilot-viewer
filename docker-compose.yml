@@ -1,0 +1,12 @@
+services:
+  web:
+    image: bryangerlach/openpilot-viewer:latest
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ""
+      CSRF_TRUSTED_ORIGINS: "http://localhost"
+    volumes:
+      - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/stitched:/data/stitched:ro
+      - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/metadata:/data/metadata
+    ports:
+      - "80:80"

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}OpenPilot Viewer{% endblock %}</title>
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/heroicons@2.0.18/dist/heroicons.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#00bfff',
+          },
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+
+<div id="toast"
+       class="fixed bottom-4 right-4 bg-gray-800 text-white px-3 py-2 rounded shadow-lg text-sm hidden z-50">
+    Copied!
+  </div>
+
+  <script>
+  // copyToClipboard: try navigator.clipboard, fallback to textarea+execCommand for insecure origins
+  function copyToClipboard(text) {
+    if (!text && text !== "") return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("Copied: " + text);
+      }).catch((err) => {
+        // fallback if clipboard API fails
+        console.warn("navigator.clipboard failed, falling back", err);
+        fallbackCopyTextToClipboard(text);
+      });
+    } else {
+      fallbackCopyTextToClipboard(text);
+    }
+  }
+
+  function fallbackCopyTextToClipboard(text) {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      if (successful) {
+        showToast("Copied: " + text);
+      } else {
+        showToast("Copy failed");
+      }
+    } catch (err) {
+      console.error("fallback copy failed", err);
+      showToast("Copy failed");
+    }
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.remove("hidden");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+    }, 1600);
+  }
+  </script>
+
+  <!-- Navbar / Header -->
+  <header class="bg-white shadow-md py-4 mb-6">
+    <div class="max-w-6xl mx-auto px-4 flex justify-between items-center">
+      <h1 class="text-xl font-semibold text-gray-900">OpenPilot Viewer</h1>
+      <nav>
+        <a href="{% url 'drive_list' %}" class="text-blue-600 hover:underline">Drives</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="max-w-6xl mx-auto px-4">
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>
