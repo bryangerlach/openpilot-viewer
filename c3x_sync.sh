@@ -56,8 +56,19 @@ if [ "$free_before" -lt "$MIN_FREE_GB" ]; then
 fi
 
 # use rsync to copy any new drives
-log "Syncing drives..."
-rsync -av -e "ssh -i $SSH_KEY" --ignore-existing "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
+# First: sync only log files
+log "Syncing logs first..."
+rsync -av -e "ssh -i $SSH_KEY" \
+  --include="*/" \
+  --include="*.zst" \
+  --include="*.ts" \
+  --exclude="*.hevc" \
+  "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
+
+# Then: sync videos
+log "Syncing video segments..."
+rsync -av -e "ssh -i $SSH_KEY" --ignore-existing \
+  "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
 # stitch together the drive videos into one video file per camera
 routes=$(find "$LOCAL_RAW" -mindepth 1 -maxdepth 1 -type d \
