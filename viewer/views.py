@@ -48,6 +48,35 @@ def save_preserved_routes(preserved_set):
         json.dump(list(preserved_set), f)
 
 
+def get_route_start_time(route_id: str) -> datetime:
+    """
+    Try to determine route start time.
+    Priority:
+      1. start_time.txt in stitched folder
+      2. mtime of segment 0 folder in raw
+    """
+    stitched_path = STITCHED_DIR / route_id
+    start_time_file = stitched_path / "start_time.txt"
+
+    # Case 1: stitched has start_time.txt
+    if start_time_file.exists():
+        try:
+            with open(start_time_file) as f:
+                ts = f.read().strip()
+                return datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
+
+    # Case 2: use segment 0 folder mtime
+    seg0 = RAW_DIR / f"{route_id}--0"
+    if seg0.exists() and seg0.is_dir():
+        ts = datetime.fromtimestamp(seg0.stat().st_mtime)
+        return ts
+
+    # Fallback
+    return DEFAULT_OLD_DATE
+
+
 # ----------------------
 # Views
 # ----------------------
@@ -90,17 +119,9 @@ def drive_list(request):
         raw_paths = raw_routes_grouped.get(route_id, [])
 
         # try to determine start_time
-        start_time = DEFAULT_OLD_DATE
-        for base_path in ([stitched_path] if stitched_path else []) + raw_paths:
-            start_time_file = base_path / "start_time.txt"
-            if start_time_file.exists():
-                with open(start_time_file) as f:
-                    ts = f.read().strip()
-                    try:
-                        start_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        pass
-                break
+        start_time = get_route_start_time(route_id)
+        if start_time is None:
+            start_time = DEFAULT_OLD_DATE
 
         thumbnails = {}
         if stitched_path:
@@ -159,28 +180,7 @@ def drive_detail(request, route_id):
                 })
 
     # check stitched first, then raw segments for start_time
-    start_time = None
-    if drive_path.is_dir():
-        start_time_file = drive_path / "start_time.txt"
-        if start_time_file.exists():
-            with open(start_time_file) as f:
-                ts = f.read().strip()
-                try:
-                    start_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    pass
-
-    if start_time is None:
-        for segdir in RAW_DIR.glob(f"{route_id}--*"):
-            start_time_file = segdir / "start_time.txt"
-            if start_time_file.exists():
-                with open(start_time_file) as f:
-                    ts = f.read().strip()
-                    try:
-                        start_time = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        pass
-                break
+    start_time = get_route_start_time(route_id)
 
     if start_time is None:
         start_time = DEFAULT_OLD_DATE
