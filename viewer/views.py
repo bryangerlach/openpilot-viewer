@@ -8,6 +8,10 @@ from collections import defaultdict
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
 
+from django.views.decorators.http import require_POST
+from django.contrib import messages
+import shutil
+
 DEFAULT_OLD_DATE = datetime(1900, 1, 1)
 
 STITCHED_DIR = Path("/data/stitched")  # Mounted in Docker
@@ -75,6 +79,19 @@ def get_route_start_time(route_id: str) -> datetime:
 
     # Fallback
     return DEFAULT_OLD_DATE
+
+# Recreate stitched video
+@require_POST
+def recreate_stitched(request, route_id):
+    """Delete stitched folder so it can be regenerated."""
+    stitched_path = STITCHED_DIR / route_id
+    if stitched_path.exists() and stitched_path.is_dir():
+        shutil.rmtree(stitched_path)
+        messages.success(request, f"Stitched video for {route_id} will be recreated on next sync.")
+    else:
+        messages.warning(request, f"No stitched video exists for {route_id} to recreate.")
+
+    return redirect("drive_detail", route_id=route_id)
 
 
 # ----------------------
