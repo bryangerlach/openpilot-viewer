@@ -9,11 +9,23 @@ REMOTE_DRIVES="/data/media/0/realdata"
 LOCAL_RAW="/srv/dev-disk-by-uuid-b502f01f-739c-464b-8f02-8037fe760b79/openpilot_data/raw"
 LOCAL_STITCHED="/srv/dev-disk-by-uuid-b502f01f-739c-464b-8f02-8037fe760b79/openpilot_data/stitched"
 LOG_FILE="/srv/dev-disk-by-uuid-b502f01f-739c-464b-8f02-8037fe760b79/openpilot_data/logs/c3x_sync.log"
+DELETED_FILE="/srv/dev-disk-by-uuid-b502f01f-739c-464b-8f02-8037fe760b79/openpilot_data/deleted_routes.txt"
+touch "$DELETED_FILE"
 
 MIN_FREE_GB=75
 # End Configuration
 
-log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"; }
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE" || true; }
+
+MAX_LOG_SIZE=$((50*1024*1024)) # 50 MB
+if [ -f "$LOG_FILE" ]; then
+    size=$(stat -c%s "$LOG_FILE")
+    if [ "$size" -gt "$MAX_LOG_SIZE" ]; then
+        mv "$LOG_FILE" "$LOG_FILE.old"
+        touch "$LOG_FILE"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Log rotated (old saved as .old)" >> "$LOG_FILE"
+    fi
+fi
 
 # ping device ip to check if online or not
 if ! ping -c 1 -W 2 "$C3X_IP" >/dev/null 2>&1; then
@@ -36,9 +48,13 @@ cleanup_routes() {
             continue
         fi
 
-        log "Deleting route $(basename "$route_dir")..."
+        route_id=$(basename "$route_dir")
+        log "Deleting route $route_id..."
         rm -rf "$route_dir"
-        rm -rf "$LOCAL_RAW"/*--"$(basename "$route_dir")"--*
+        rm -rf "$LOCAL_RAW"/*--"$route_id"--*
+
+        # mark as deleted so it won’t sync again
+        echo "$route_id" >> "$DELETED_FILE"
 
         avail=$(check_space)
         if [ "$avail" -ge "$MIN_FREE_GB" ]; then
@@ -55,19 +71,28 @@ if [ "$free_before" -lt "$MIN_FREE_GB" ]; then
     cleanup_routes
 fi
 
-# use rsync to copy any new drives
-# First: sync only log files
+# build rsync excludes file from deleted routes
+RSYNC_EXCLUDES="/tmp/rsync_excludes.txt"
+> "$RSYNC_EXCLUDES"
+if [ -f "$DELETED_FILE" ]; then
+    while read -r route; do
+        [ -n "$route" ] && echo "$route--*" >> "$RSYNC_EXCLUDES"
+    done < "$DELETED_FILE"
+fi
+
 log "Syncing logs first..."
-rsync -av -e "ssh -i $SSH_KEY" \
+rsync -a --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
   --include="*/" \
   --include="*.zst" \
   --include="*.ts" \
   --exclude="*.hevc" \
+  --exclude-from="$RSYNC_EXCLUDES" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
-# Then: sync videos
 log "Syncing video segments..."
-rsync -av -e "ssh -i $SSH_KEY" --ignore-existing \
+rsync -a --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
+  --ignore-existing \
+  --exclude-from="$RSYNC_EXCLUDES" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
 # stitch together the drive videos into one video file per camera
