@@ -93,12 +93,13 @@ services:
     restart: unless-stopped
     environment:
       SECRET_KEY: ""
-      CSRF_TRUSTED_ORIGINS: "http://localhost"
+      CSRF_TRUSTED_ORIGINS: "http://localhost http://openmediavault.local"
     volumes:
-      - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/stitched:/data/stitched:ro
+      - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/stitched:/data/stitched
       - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/metadata:/data/metadata
+      - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/raw:/data/raw
     ports:
-      - "80:80"
+      - "8000:80"
 ```
 Notes:
 

@@ -81,7 +81,8 @@ if [ -f "$DELETED_FILE" ]; then
 fi
 
 log "Syncing logs first..."
-rsync -a --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
+rsync -rtp --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
+  --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
   --include="*/" \
   --include="*.zst" \
   --include="*.ts" \
@@ -90,7 +91,8 @@ rsync -a --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
 log "Syncing video segments..."
-rsync -a --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
+rsync -rtp --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
+  --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
   --ignore-existing \
   --exclude-from="$RSYNC_EXCLUDES" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
@@ -106,7 +108,7 @@ routes=$(find "$LOCAL_RAW" -mindepth 1 -maxdepth 1 -type d \
 for route_id in $routes; do
     stitched_path="$LOCAL_STITCHED/$route_id"
     [ -d "$stitched_path" ] && continue
-    mkdir -p "$stitched_path"
+    mkdir -p -m 2775 "$stitched_path"
     log "Stitching route $route_id..."
 
     # get the start time and save it to a text file
@@ -138,7 +140,7 @@ for route_id in $routes; do
 
             # generate thumbnails
             thumbs_dir="$stitched_path/thumbs/$cam"
-            mkdir -p "$thumbs_dir"
+            mkdir -p -m 2775 "$thumbs_dir"
 
             duration=$(ffprobe -v error -select_streams v:0 -show_entries stream=duration \
                        -of default=noprint_wrappers=1:nokey=1 "$output")

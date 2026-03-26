@@ -10,4 +10,4 @@ services:
       - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/metadata:/data/metadata
       - /srv/dev-disk-by-uuid-xxxxxx/openpilot_data/raw:/data/raw
     ports:
-      - "80:80"
+      - "8000:80"
