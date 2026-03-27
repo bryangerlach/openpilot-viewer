@@ -223,14 +223,11 @@ def segment_list(request, route_id):
     """Lists all available segments (minutes) for a route that have logs."""
     segments = []
     
-    # Search RAW_DIR for folders matching "route_id--N"
-    # We use glob to find all segment folders for this route
     for segment_folder in sorted(RAW_DIR.glob(f"{route_id}--*")):
         if segment_folder.is_dir():
             qlog_path = segment_folder / "qlog.zst"
             rlog_path = segment_folder / "rlog.zst"
             
-            # Determine which log to favor (qlog is better for web)
             log_file = None
             if qlog_path.exists():
                 log_file = "qlog.zst"
@@ -238,13 +235,13 @@ def segment_list(request, route_id):
                 log_file = "rlog.zst"
                 
             if log_file:
-                # Extract the segment number (the "N" in route--N)
                 seg_num = segment_folder.name.split("--")[-1]
                 segments.append({
-                    "number": seg_num,
+                    "number": int(seg_num),
                     "folder_name": segment_folder.name,
                     "log_type": log_file
                 })
+    segments.sort(key=lambda x: x['number'])
 
     return render(request, "viewer/segment_list.html", {
         "route_id": route_id,
