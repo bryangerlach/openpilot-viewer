@@ -27,16 +27,18 @@
             <label for="typeFilter" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Filter by Message Type</label>
             <select id="typeFilter" onchange="filterLogs()" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                 <option value="all">All Events ({{ events|length }})</option>
+                
                 <optgroup label="Common">
-                    <option value="errorLogMessage">errorLogMessage</option>
-                    <option value="carState">carState</option>
-                    <option value="carControl">carControl</option>
-                    <option value="pandaStates">pandaStates</option>
+                    {% if "errorLogMessage" in event_types %}<option value="errorLogMessage">errorLogMessage</option>{% endif %}
+                    {% if "carState" in event_types %}<option value="carState">carState</option>{% endif %}
+                    {% if "carControl" in event_types %}<option value="carControl">carControl</option>{% endif %}
+                    {% if "pandaStates" in event_types %}<option value="pandaStates">pandaStates</option>{% endif %}
+                    {% if "modelV2" in event_types %}<option value="modelV2">modelV2</option>{% endif %}
                 </optgroup>
+
                 <optgroup label="All Available Types">
-                    {% regroup events by type as type_list %}
-                    {% for type in type_list|dictsort:"grouper" %}
-                        <option value="{{ type.grouper }}">{{ type.grouper }} ({{ type.list|length }})</option>
+                    {% for type_name in event_types %}
+                        <option value="{{ type_name }}">{{ type_name }}</option>
                     {% endfor %}
                 </optgroup>
             </select>

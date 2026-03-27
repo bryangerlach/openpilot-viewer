@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Error - System Message{% endblock %}
+
+{% block content %}
+<div class="min-h-[60vh] flex items-center justify-center px-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl border border-red-100 overflow-hidden">
+        <div class="bg-red-50 px-6 py-4 border-b border-red-100 flex items-center gap-3">
+            <div class="p-2 bg-red-100 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h2 class="text-lg font-bold text-red-800">System Error</h2>
+        </div>
+        
+        <div class="p-8 text-center">
+            <p class="text-gray-600 mb-6 leading-relaxed">
+                {{ message|default:"An unexpected error occurred while processing the request." }}
+            </p>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="window.history.back()" class="w-full py-3 px-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition shadow-lg">
+                    Return to Previous Page
+                </button>
+                <a href="{% url 'drive_list' %}" class="text-sm text-blue-600 hover:underline">
+                    Back to Drive List
+                </a>
+            </div>
+        </div>
+        
+        <div class="bg-gray-50 px-6 py-3 border-t border-gray-100">
+            <p class="text-[10px] text-gray-400 font-mono uppercase tracking-widest text-center">
+                Reference: ERR_LOG_PARSER_FAILURE
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

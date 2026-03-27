@@ -7,6 +7,7 @@ import io
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from collections import Counter
 
 from django.shortcuts import render, redirect
 from django.core.paginator import Paginator
@@ -252,7 +253,6 @@ def segment_list(request, route_id):
 
 def log_detail(request, route_id, segment_num):
     """Parses and displays a specific log file."""
-    # Construct path to qlog.zst
     segment_folder = f"{route_id}--{segment_num}"
     log_path = RAW_DIR / segment_folder / "qlog.zst"
 
@@ -271,6 +271,7 @@ def log_detail(request, route_id, segment_num):
         print(f"WARNING: log.capnp not found at {LOG_CAPNP_PATH}")
 
     events = []
+    unique_types = set()
     dctx = zstd.ZstdDecompressor()
     
     try:
@@ -278,23 +279,26 @@ def log_detail(request, route_id, segment_num):
             with dctx.stream_reader(f) as reader:
                 data = reader.read()
             
-            # Parse messages
             log_events = log_capnp.Event.read_multiple_bytes(data)
             
             for event in log_events:
                 msg_type = event.which()
-                # Whitelist common display types to keep the page snappy
-                if msg_type in ['carState', 'carControl', 'modelV2', 'pandaStates', 'deviceState']:
-                    events.append({
-                        "type": msg_type,
-                        "time": event.logMonoTime,
-                        "data": event.to_dict()[msg_type]
-                    })
+                unique_types.add(msg_type)
+                
+                events.append({
+                    "type": msg_type,
+                    "time": event.logMonoTime,
+                    "data": event.to_dict().get(msg_type, {})
+                })
+                
     except Exception as e:
-        return render(request, "error.html", {"message": f"Parsing Error: {e}"})
+        return render(request, "viewer/error.html", {"message": f"Parsing Error: {e}"})
+
+    sorted_types = sorted(list(unique_types))
 
     return render(request, "viewer/log_detail.html", {
         "route_id": route_id,
         "segment_num": segment_num,
-        "events": events
+        "events": events,
+        "event_types": sorted_types
     })
