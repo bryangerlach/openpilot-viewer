@@ -95,38 +95,4 @@
         border-radius: 2px;
     }
 </style>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        filterLogs();
-    });
-    function filterLogs() {
-        const typeVal = document.getElementById('typeFilter').value;
-        const searchVal = document.getElementById('searchInput').value.toLowerCase();
-        const rows = document.querySelectorAll('.log-row');
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-            const type = row.getAttribute('data-type');
-            const content = row.innerText.toLowerCase();
-
-            const matchesType = (typeVal === 'all' || type === typeVal);
-            const matchesSearch = content.includes(searchVal);
-
-            if (matchesType && matchesSearch) {
-                row.style.display = 'block';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        document.getElementById('visibleCount').innerText = visibleCount;
-    }
-
-    // Auto-scroll to top when filter changes
-    document.getElementById('typeFilter').addEventListener('change', () => {
-        document.getElementById('logBox').scrollTop = 0;
-    });
-</script>
 {% endblock %}
