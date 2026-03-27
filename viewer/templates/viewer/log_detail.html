@@ -26,8 +26,6 @@
         <div class="w-full md:w-64">
             <label for="typeFilter" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Filter by Message Type</label>
             <select id="typeFilter" onchange="location.href='?type=' + this.value" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                <option value="all" {% if active_filter == 'all' %}selected{% endif %}>All Events (Warning: Slow)</option>
-                
                 <optgroup label="Available Types">
                     {% for type_name in event_types %}
                         <option value="{{ type_name }}" {% if active_filter == type_name %}selected{% endif %}>
