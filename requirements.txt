@@ -1,2 +1,4 @@
 Django>=5.0
 gunicorn
+capnp
+zstandard
