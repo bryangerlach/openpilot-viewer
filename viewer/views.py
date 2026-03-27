@@ -270,6 +270,7 @@ def log_detail(request, route_id, segment_num):
     events = []
     unique_types = set()
     dctx = zstd.ZstdDecompressor()
+    active_filter = request.GET.get('type', 'errorLogMessage')
     
     try:
         with open(log_path, 'rb') as f:
@@ -282,11 +283,12 @@ def log_detail(request, route_id, segment_num):
                 msg_type = event.which()
                 unique_types.add(msg_type)
                 
-                events.append({
-                    "type": msg_type,
-                    "time": event.logMonoTime,
-                    "data": event.to_dict().get(msg_type, {})
-                })
+                if active_filter == 'all' or msg_type == active_filter:
+                    events.append({
+                        "type": msg_type,
+                        "time": event.logMonoTime,
+                        "data": event.to_dict().get(msg_type, {})
+                    })
                 
     except Exception as e:
         return render(request, "viewer/error.html", {"message": f"Parsing Error: {e}"})
@@ -297,5 +299,6 @@ def log_detail(request, route_id, segment_num):
         "route_id": route_id,
         "segment_num": segment_num,
         "events": events,
-        "event_types": sorted_types
+        "event_types": sorted_types,
+        "active_filter": active_filter,
     })
