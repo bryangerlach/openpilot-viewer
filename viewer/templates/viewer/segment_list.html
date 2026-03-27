@@ -3,6 +3,6 @@
     {% for seg in segments %}
     <a href="{% url 'log_detail' route_id seg.number %}" class="list-group-item list-group-item-action">
         Segment {{ seg.number }} ({{ seg.log_type }})
-    </a>
+    </a><br>
     {% endfor %}
 </div>

@@ -264,8 +264,9 @@ def log_detail(request, route_id, segment_num):
         return render(request, "error.html", {"message": "Log file not found."})
 
     # Load Schema
-    # Note: Ensure your 'cereal' folder is in your project root or adjust path
-    CEREAL_DIR = os.path.abspath('./cereal') 
+    CURRENT_DIR = Path(__file__).resolve().parent
+    CEREAL_DIR = CURRENT_DIR / "cereal"
+
     log_capnp = capnp.load(os.path.join(CEREAL_DIR, 'log.capnp'), imports=[CEREAL_DIR])
 
     events = []
