@@ -26,6 +26,11 @@
         <div class="w-full md:w-64">
             <label for="typeFilter" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Filter by Message Type</label>
             <select id="typeFilter" onchange="filterLogs()" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                {% if "errorLogMessage" in event_types %}
+                    <option value="errorLogMessage" selected>errorLogMessage (Default)</option>
+                {% else %}
+                    <option value="" selected>-- Select an Event Type --</option>
+                {% endif %}
                 <option value="all">All Events ({{ events|length }})</option>
                 
                 <optgroup label="Common">
@@ -103,33 +108,36 @@
 </style>
 
 <script>
-function filterLogs() {
-    const typeVal = document.getElementById('typeFilter').value;
-    const searchVal = document.getElementById('searchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('.log-row');
-    let visibleCount = 0;
-
-    rows.forEach(row => {
-        const type = row.getAttribute('data-type');
-        const content = row.innerText.toLowerCase();
-
-        const matchesType = (typeVal === 'all' || type === typeVal);
-        const matchesSearch = content.includes(searchVal);
-
-        if (matchesType && matchesSearch) {
-            row.style.display = 'block';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
+    document.addEventListener('DOMContentLoaded', () => {
+        filterLogs();
     });
+    function filterLogs() {
+        const typeVal = document.getElementById('typeFilter').value;
+        const searchVal = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('.log-row');
+        let visibleCount = 0;
 
-    document.getElementById('visibleCount').innerText = visibleCount;
-}
+        rows.forEach(row => {
+            const type = row.getAttribute('data-type');
+            const content = row.innerText.toLowerCase();
 
-// Auto-scroll to top when filter changes
-document.getElementById('typeFilter').addEventListener('change', () => {
-    document.getElementById('logBox').scrollTop = 0;
-});
+            const matchesType = (typeVal === 'all' || type === typeVal);
+            const matchesSearch = content.includes(searchVal);
+
+            if (matchesType && matchesSearch) {
+                row.style.display = 'block';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('visibleCount').innerText = visibleCount;
+    }
+
+    // Auto-scroll to top when filter changes
+    document.getElementById('typeFilter').addEventListener('change', () => {
+        document.getElementById('logBox').scrollTop = 0;
+    });
 </script>
 {% endblock %}
