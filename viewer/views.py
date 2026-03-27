@@ -255,10 +255,6 @@ def log_detail(request, route_id, segment_num):
     # Construct path to qlog.zst
     segment_folder = f"{route_id}--{segment_num}"
     log_path = RAW_DIR / segment_folder / "qlog.zst"
-    
-    # Fallback to rlog if qlog doesn't exist
-    if not log_path.exists():
-        log_path = RAW_DIR / segment_folder / "rlog.zst"
 
     if not log_path.exists():
         return render(request, "error.html", {"message": "Log file not found."})
@@ -266,8 +262,13 @@ def log_detail(request, route_id, segment_num):
     # Load Schema
     CURRENT_DIR = Path(__file__).resolve().parent
     CEREAL_DIR = CURRENT_DIR / "cereal"
+    LOG_CAPNP_PATH = CEREAL_DIR / "log.capnp"
 
-    log_capnp = capnp.load(os.path.join(CEREAL_DIR, 'log.capnp'), imports=[CEREAL_DIR])
+    if LOG_CAPNP_PATH.exists():
+        log_capnp = capnp.load(str(LOG_CAPNP_PATH), imports=[str(CEREAL_DIR)])
+    else:
+        log_capnp = None
+        print(f"WARNING: log.capnp not found at {LOG_CAPNP_PATH}")
 
     events = []
     dctx = zstd.ZstdDecompressor()
