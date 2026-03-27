@@ -1,0 +1,27 @@
+<h2>Log: {{ route_id }} (Minute {{ segment_num }})</h2>
+
+<select id="typeFilter" class="form-select mb-3" onchange="filterLogs()">
+    <option value="all">All Events</option>
+    <option value="carState">carState</option>
+    <option value="modelV2">modelV2</option>
+    <option value="carControl">carControl</option>
+</select>
+
+<div id="logBox" style="font-family: monospace; background: #222; color: #eee; padding: 10px; height: 70vh; overflow-y: scroll;">
+    {% for event in events %}
+    <div class="log-row" data-type="{{ event.type }}" style="border-bottom: 1px solid #444; margin-bottom: 5px;">
+        <span style="color: #00ff00;">[{{ event.type }}]</span> 
+        <span style="color: #888;">{{ event.time }}</span>
+        <pre style="margin: 0; color: #fff;">{{ event.data }}</pre>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function filterLogs() {
+    const val = document.getElementById('typeFilter').value;
+    document.querySelectorAll('.log-row').forEach(row => {
+        row.style.display = (val === 'all' || row.dataset.type === val) ? 'block' : 'none';
+    });
+}
+</script>

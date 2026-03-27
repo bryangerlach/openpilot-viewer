@@ -1,6 +1,9 @@
 import os
 import json
 import re
+import capnp
+import zstandard as zstd
+import io
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -213,4 +216,83 @@ def drive_detail(request, route_id):
     return render(request, "viewer/drive_detail.html", {
         "drive": drive,
         "preserved_routes": preserved_routes
+    })
+
+def segment_list(request, route_id):
+    """Lists all available segments (minutes) for a route that have logs."""
+    segments = []
+    
+    # Search RAW_DIR for folders matching "route_id--N"
+    # We use glob to find all segment folders for this route
+    for segment_folder in sorted(RAW_DIR.glob(f"{route_id}--*")):
+        if segment_folder.is_dir():
+            qlog_path = segment_folder / "qlog.zst"
+            rlog_path = segment_folder / "rlog.zst"
+            
+            # Determine which log to favor (qlog is better for web)
+            log_file = None
+            if qlog_path.exists():
+                log_file = "qlog.zst"
+            elif rlog_path.exists():
+                log_file = "rlog.zst"
+                
+            if log_file:
+                # Extract the segment number (the "N" in route--N)
+                seg_num = segment_folder.name.split("--")[-1]
+                segments.append({
+                    "number": seg_num,
+                    "folder_name": segment_folder.name,
+                    "log_type": log_file
+                })
+
+    return render(request, "viewer/segment_list.html", {
+        "route_id": route_id,
+        "segments": segments
+    })
+
+def log_detail(request, route_id, segment_num):
+    """Parses and displays a specific log file."""
+    # Construct path to qlog.zst
+    segment_folder = f"{route_id}--{segment_num}"
+    log_path = RAW_DIR / segment_folder / "qlog.zst"
+    
+    # Fallback to rlog if qlog doesn't exist
+    if not log_path.exists():
+        log_path = RAW_DIR / segment_folder / "rlog.zst"
+
+    if not log_path.exists():
+        return render(request, "error.html", {"message": "Log file not found."})
+
+    # Load Schema
+    # Note: Ensure your 'cereal' folder is in your project root or adjust path
+    CEREAL_DIR = os.path.abspath('./cereal') 
+    log_capnp = capnp.load(os.path.join(CEREAL_DIR, 'log.capnp'), imports=[CEREAL_DIR])
+
+    events = []
+    dctx = zstd.ZstdDecompressor()
+    
+    try:
+        with open(log_path, 'rb') as f:
+            with dctx.stream_reader(f) as reader:
+                data = reader.read()
+            
+            # Parse messages
+            log_events = log_capnp.Event.read_multiple_bytes(data)
+            
+            for event in log_events:
+                msg_type = event.which()
+                # Whitelist common display types to keep the page snappy
+                if msg_type in ['carState', 'carControl', 'modelV2', 'pandaStates', 'deviceState']:
+                    events.append({
+                        "type": msg_type,
+                        "time": event.logMonoTime,
+                        "data": event.to_dict()[msg_type]
+                    })
+    except Exception as e:
+        return render(request, "error.html", {"message": f"Parsing Error: {e}"})
+
+    return render(request, "viewer/log_detail.html", {
+        "route_id": route_id,
+        "segment_num": segment_num,
+        "events": events
     })

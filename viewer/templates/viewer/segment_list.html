@@ -1,0 +1,8 @@
+<h2>Segments for {{ route_id }}</h2>
+<div class="list-group">
+    {% for seg in segments %}
+    <a href="{% url 'log_detail' route_id seg.number %}" class="list-group-item list-group-item-action">
+        Segment {{ seg.number }} ({{ seg.log_type }})
+    </a>
+    {% endfor %}
+</div>
