@@ -1,27 +1,133 @@
-<h2>Log: {{ route_id }} (Minute {{ segment_num }})</h2>
+{% extends "base.html" %}
 
-<select id="typeFilter" class="form-select mb-3" onchange="filterLogs()">
-    <option value="all">All Events</option>
-    <option value="carState">carState</option>
-    <option value="modelV2">modelV2</option>
-    <option value="carControl">carControl</option>
-</select>
+{% block title %}Log {{ route_id }} - Segment {{ segment_num }}{% endblock %}
 
-<div id="logBox" style="font-family: monospace; background: #222; color: #eee; padding: 10px; height: 70vh; overflow-y: scroll;">
-    {% for event in events %}
-    <div class="log-row" data-type="{{ event.type }}" style="border-bottom: 1px solid #444; margin-bottom: 5px;">
-        <span style="color: #00ff00;">[{{ event.type }}]</span> 
-        <span style="color: #888;">{{ event.time }}</span>
-        <pre style="margin: 0; color: #fff;">{{ event.data }}</pre>
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <nav class="flex text-sm text-gray-500 mb-2" aria-label="Breadcrumb">
+                <a href="{% url 'drive_list' %}" class="hover:text-blue-600">Drives</a>
+                <span class="mx-2">/</span>
+                <a href="{% url 'drive_detail' route_id %}" class="hover:text-blue-600 font-mono">{{ route_id|truncatechars:20 }}</a>
+                <span class="mx-2">/</span>
+                <span class="text-gray-900">Segment {{ segment_num }}</span>
+            </nav>
+            <h2 class="text-2xl font-bold text-gray-900">Raw Log Explorer</h2>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'segment_list' route_id %}" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+                ← Back to Segments
+            </a>
+        </div>
     </div>
-    {% endfor %}
+
+    <div class="bg-white rounded-t-xl border border-gray-200 p-4 shadow-sm flex flex-wrap gap-4 items-end">
+        <div class="w-full md:w-64">
+            <label for="typeFilter" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Filter by Message Type</label>
+            <select id="typeFilter" onchange="filterLogs()" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="all">All Events ({{ events|length }})</option>
+                <optgroup label="Common">
+                    <option value="errorLogMessage">errorLogMessage</option>
+                    <option value="carState">carState</option>
+                    <option value="carControl">carControl</option>
+                    <option value="pandaStates">pandaStates</option>
+                </optgroup>
+                <optgroup label="All Available Types">
+                    {% regroup events by type as type_list %}
+                    {% for type in type_list|dictsort:"grouper" %}
+                        <option value="{{ type.grouper }}">{{ type.grouper }} ({{ type.list|length }})</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="flex-1 min-w-[250px]">
+            <label for="searchInput" class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Search Inside Data</label>
+            <div class="relative">
+                <input type="text" id="searchInput" onkeyup="filterLogs()" placeholder="Search values, keys, or timestamps..." 
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pl-9">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-xs text-gray-400 font-mono pb-2">
+            Showing <span id="visibleCount" class="font-bold text-indigo-600">{{ events|length }}</span> / {{ events|length }} events
+        </div>
+    </div>
+
+    <div class="bg-slate-900 rounded-b-xl shadow-2xl border-x border-b border-slate-800 overflow-hidden">
+        <div id="logBox" class="h-[75vh] overflow-y-auto p-0 scrollbar-thin scrollbar-thumb-slate-700">
+            {% for event in events %}
+            <div class="log-row group border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors" data-type="{{ event.type }}">
+                <div class="flex flex-col md:flex-row md:items-center gap-2 px-4 py-2 bg-slate-900/50 group-hover:bg-slate-800/80">
+                    <span class="w-fit px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter bg-indigo-900/40 text-indigo-300 border border-indigo-500/30">
+                        {{ event.type }}
+                    </span>
+                    <span class="text-[10px] text-slate-500 font-mono">
+                        MonoTime: {{ event.time }}
+                    </span>
+                </div>
+                <div class="px-6 py-3">
+                    <pre class="log-data text-xs text-slate-300 font-mono whitespace-pre-wrap leading-relaxed">{{ event.data }}</pre>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-20 text-center text-slate-500">
+                <p>No events found in this log file.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
+
+<style>
+    /* Styling the code-like scrollbar */
+    #logBox::-webkit-scrollbar { width: 10px; }
+    #logBox::-webkit-scrollbar-track { background: #0f172a; }
+    #logBox::-webkit-scrollbar-thumb { background: #1e293b; border: 2px solid #0f172a; border-radius: 5px; }
+    #logBox::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+    /* Text highlight for search matches */
+    .search-match {
+        background-color: rgba(250, 204, 21, 0.2);
+        color: #fbbf24;
+        border-radius: 2px;
+    }
+</style>
 
 <script>
 function filterLogs() {
-    const val = document.getElementById('typeFilter').value;
-    document.querySelectorAll('.log-row').forEach(row => {
-        row.style.display = (val === 'all' || row.dataset.type === val) ? 'block' : 'none';
+    const typeVal = document.getElementById('typeFilter').value;
+    const searchVal = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.log-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+        const type = row.getAttribute('data-type');
+        const content = row.innerText.toLowerCase();
+
+        const matchesType = (typeVal === 'all' || type === typeVal);
+        const matchesSearch = content.includes(searchVal);
+
+        if (matchesType && matchesSearch) {
+            row.style.display = 'block';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
     });
+
+    document.getElementById('visibleCount').innerText = visibleCount;
 }
+
+// Auto-scroll to top when filter changes
+document.getElementById('typeFilter').addEventListener('change', () => {
+    document.getElementById('logBox').scrollTop = 0;
+});
 </script>
+{% endblock %}
