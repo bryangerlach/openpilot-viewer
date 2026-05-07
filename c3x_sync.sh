@@ -42,7 +42,7 @@ check_space() {
 # FUNCTION: cleanup oldest routes
 cleanup_routes() {
     log "Free space below ${MIN_FREE_GB}GB, cleaning up old routes..."
-    for route_dir in $(find "$LOCAL_STITCHED" -mindepth 1 -maxdepth 1 -type d | sort); do
+    find "$LOCAL_STITCHED" -mindepth 1 -maxdepth 1 -type d | sort | while read -r route_dir; do
         if [ -f "$route_dir/.preserve" ]; then
             log "Skipping preserved route $(basename "$route_dir")"
             continue
@@ -50,13 +50,35 @@ cleanup_routes() {
 
         route_id=$(basename "$route_dir")
         log "Deleting route $route_id..."
-        rm -rf "$route_dir"
-        rm -rf "$LOCAL_RAW"/*--"$route_id"--*
 
-        # mark as deleted so it won’t sync again
+        # delete stitched route
+        if ! rm -rf -- "$route_dir" 2>>"$LOG_FILE"; then
+            log "ERROR: Failed to delete stitched route $route_dir"
+            continue
+        fi
+
+        # delete raw segments
+        find "$LOCAL_RAW" -maxdepth 1 -type d -name "${route_id}--*" -print0 \
+            | xargs -0 rm -rf -- 2>>"$LOG_FILE" || {
+                log "ERROR: Failed deleting raw segments for $route_id"
+                continue
+            }
+
+        # verify deletion actually succeeded
+        remaining=$(find "$LOCAL_RAW" -maxdepth 1 -type d -name "${route_id}--*" | wc -l)
+
+        if [ -d "$route_dir" ] || [ "$remaining" -gt 0 ]; then
+            log "ERROR: Route $route_id still exists after deletion attempt"
+            continue
+        fi
+
+        # mark as deleted ONLY after successful cleanup
         echo "$route_id" >> "$DELETED_FILE"
 
+        log "Successfully deleted route $route_id"
+
         avail=$(check_space)
+
         if [ "$avail" -ge "$MIN_FREE_GB" ]; then
             log "Cleanup finished, free space now ${avail}GB"
             return
@@ -74,26 +96,43 @@ fi
 # build rsync excludes file from deleted routes
 RSYNC_EXCLUDES="/tmp/rsync_excludes.txt"
 > "$RSYNC_EXCLUDES"
+
 if [ -f "$DELETED_FILE" ]; then
     while read -r route; do
-        [ -n "$route" ] && echo "$route--*" >> "$RSYNC_EXCLUDES"
+        [ -z "$route" ] && continue
+
+        echo "/${route}--*/" >> "$RSYNC_EXCLUDES"
+        echo "/${route}--*/**" >> "$RSYNC_EXCLUDES"
+
     done < "$DELETED_FILE"
 fi
 
+log "Generated rsync excludes:"
+cat "$RSYNC_EXCLUDES" | tee -a "$LOG_FILE"
+
 log "Syncing logs first..."
-rsync -rtp --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
-  --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
+rsync -rtp \
+  --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
+  --info=stats2,flist0,progress2 \
+  --no-i-r \
+  --prune-empty-dirs \
+  -e "ssh -i $SSH_KEY" \
+  --exclude-from="$RSYNC_EXCLUDES" \
   --include="*/" \
   --include="*.zst" \
   --include="*.ts" \
   --exclude="*.hevc" \
-  --exclude-from="$RSYNC_EXCLUDES" \
+  --exclude="*" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
 log "Syncing video segments..."
-rsync -rtp --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
-  --info=stats2,flist0,progress2 --no-i-r -e "ssh -i $SSH_KEY" \
+rsync -rtp \
+  --chmod=Du=rwx,Dg=rws,Do=rx,Fu=rw,Fg=rw,Fo=r \
+  --info=stats2,flist0,progress2 \
+  --no-i-r \
   --ignore-existing \
+  --prune-empty-dirs \
+  -e "ssh -i $SSH_KEY" \
   --exclude-from="$RSYNC_EXCLUDES" \
   "$C3X_USER@$C3X_IP:$REMOTE_DRIVES/" "$LOCAL_RAW/" | tee -a "$LOG_FILE"
 
